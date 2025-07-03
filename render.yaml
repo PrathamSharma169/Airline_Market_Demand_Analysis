@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: airline-analysis
+    env: python
+    buildCommand: |
+      pip install --upgrade pip setuptools wheel
+      pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    plan: free

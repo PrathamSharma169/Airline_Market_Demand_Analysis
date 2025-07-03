@@ -8,8 +8,9 @@ import json
 import random
 from dotenv import load_dotenv
 import os
-load_dotenv()
 
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -313,7 +314,5 @@ def analyze():
 
     return jsonify(insights)
 
-# if __name__ == '__main__':
-#     app.run(debug=True, host='0.0.0.0', port=5000)
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
