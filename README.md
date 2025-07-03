@@ -35,7 +35,6 @@ A comprehensive web application that provides flight data analysis and insights 
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd airline-market-analysis
    ```
 
 2. **Create a virtual environment**
