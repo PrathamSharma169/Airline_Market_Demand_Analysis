@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: airline-analysis
+    name: Airline_Market_Demand_Analysis
     env: python
     buildCommand: |
       pip install --upgrade pip setuptools wheel
