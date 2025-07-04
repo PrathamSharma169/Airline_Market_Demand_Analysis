@@ -115,7 +115,7 @@ The application includes hardcoded fallback data for:
 ## 📁 Project Structure
 
 ```
-airline-market-analysis/
+airline-market-demand-analysis/
 ├── app.py                 # Main Flask application
 ├── templates/
 │   └── index.html        # Frontend template
