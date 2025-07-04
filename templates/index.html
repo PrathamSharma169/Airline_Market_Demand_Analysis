@@ -70,7 +70,7 @@
             font-size: 0.95rem;
         }
 
-        .form-group select {
+        .form-group select, .form-group input {
             padding: 12px 15px;
             border: 2px solid #e1e5e9;
             border-radius: 10px;
@@ -79,10 +79,14 @@
             transition: all 0.3s ease;
         }
 
-        .form-group select:focus {
+        .form-group select:focus, .form-group input:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group input[type="date"] {
+            cursor: pointer;
         }
 
         .analyze-btn {
@@ -241,11 +245,30 @@
             padding: 25px;
             border-radius: 15px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            height: 400px;
         }
 
         canvas {
             max-width: 100%;
             height: auto !important;
+        }
+
+        .date-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #2196f3;
+        }
+
+        .date-info h4 {
+            color: #1976d2;
+            margin-bottom: 5px;
+        }
+
+        .date-info p {
+            color: #424242;
+            margin: 0;
         }
 
         @media (max-width: 768px) {
@@ -306,6 +329,11 @@
                             <option value="">Select country first</option>
                         </select>
                     </div>
+
+                    <div class="form-group">
+                        <label for="departure_date">📅 Departure Date:</label>
+                        <input type="date" id="departure_date" name="departure_date" required>
+                    </div>
                 </div>
 
                 <div style="text-align: center;">
@@ -326,6 +354,11 @@
         <div class="results" id="results">
             <h2>📊 Flight Analysis Results</h2>
             
+            <div class="date-info" id="dateInfo">
+                <h4>📅 Analysis Period</h4>
+                <p id="dateRange">-</p>
+            </div>
+            
             <div class="stats-grid">
                 <div class="stat-card">
                     <h3>Average Price</h3>
@@ -338,6 +371,10 @@
                 <div class="stat-card">
                     <h3>Flights Found</h3>
                     <div class="stat-value" id="flightCount">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Selected Date</h3>
+                    <div class="stat-value" id="selectedDate">-</div>
                 </div>
             </div>
 
@@ -361,7 +398,7 @@
             <div class="section">
                 <h3>
                     <span class="section-icon">📈</span>
-                    Price Trends
+                    Price Trends (10-Day Analysis)
                 </h3>
                 <div class="chart-container">
                     <canvas id="priceChart"></canvas>
@@ -371,7 +408,7 @@
             <div class="section">
                 <h3>
                     <span class="section-icon">✈️</span>
-                    Available Flights
+                    Available Flights for Selected Date
                 </h3>
                 <table id="flightsTable">
                     <thead>
@@ -380,7 +417,7 @@
                             <th>Airline</th>
                             <th>Departure Date</th>
                             <th>Departure Time</th>
-                            <th>Price (AUD)</th>
+                            <th>Price (USD)</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -392,10 +429,43 @@
     <script>
         let currentChart = null;
 
+        // Set default date to today
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const dateString = today.toISOString().split('T')[0];
+            document.getElementById('departure_date').value = dateString;
+            
+            console.log('Page loaded, initializing...');
+            
+            // Set default countries if available
+            const originCountry = document.getElementById('origin_country');
+            const destCountry = document.getElementById('destination_country');
+            
+            if (originCountry.options.length > 1) {
+                // Set India as default origin if available
+                for (let i = 0; i < originCountry.options.length; i++) {
+                    if (originCountry.options[i].value === 'IN') {
+                        originCountry.selectedIndex = i;
+                        updateAirports('origin', 'IN');
+                        break;
+                    }
+                }
+            }
+            
+            if (destCountry.options.length > 1) {
+                // Set US as default destination if available
+                for (let i = 0; i < destCountry.options.length; i++) {
+                    if (destCountry.options[i].value === 'US') {
+                        destCountry.selectedIndex = i;
+                        updateAirports('destination', 'US');
+                        break;
+                    }
+                }
+            }
+        });
+
         async function updateAirports(selectId, country) {
             console.log(`Fetching airports for ${country} into ${selectId}`);
-            const loading = document.getElementById('loading');
-            const errorDiv = document.getElementById('error');
             
             try {
                 const response = await fetch(`/get_airports/${encodeURIComponent(country)}`);
@@ -517,10 +587,18 @@
             // Show results section
             document.getElementById('results').style.display = 'block';
             
+            // Display date information
+            if (data.date_range && data.date_range.length > 0) {
+                const startDate = data.date_range[0];
+                const endDate = data.date_range[data.date_range.length - 1];
+                document.getElementById('dateRange').innerText = `Analysis from ${startDate} to ${endDate} (10 days)`;
+            }
+            
             // Display stats
             document.getElementById('avgPrice').innerText = data.avg_price ? `$${data.avg_price}` : 'N/A';
             document.getElementById('routeCount').innerText = data.popular_routes ? data.popular_routes.length : '0';
             document.getElementById('flightCount').innerText = data.flights ? data.flights.length : '0';
+            document.getElementById('selectedDate').innerText = data.selected_date || 'N/A';
             
             // Display popular routes
             const routesTableBody = document.querySelector('#routesTable tbody');
@@ -551,7 +629,7 @@
                     row.insertCell().innerText = flight.airline;
                     row.insertCell().innerText = flight.depart_date;
                     row.insertCell().innerText = flight.depart_time;
-                    row.insertCell().innerText = flight.price ? `${flight.price}` : 'N/A';
+                    row.insertCell().innerText = flight.price ? `$${flight.price}` : 'N/A';
                 });
             } else {
                 const row = flightsTableBody.insertRow();
@@ -572,10 +650,10 @@
             
             const chartData = {
                 labels: data.price_trends && data.price_trends.length > 0 
-                    ? data.price_trends.map(t => t.depart_date)
+                    ? data.price_trends.map(t => formatDate(t.depart_date))
                     : ['No Data'],
                 datasets: [{
-                    label: 'Average Price (AUD)',
+                    label: 'Average Price (USD)',
                     data: data.price_trends && data.price_trends.length > 0 
                         ? data.price_trends.map(t => t.price)
                         : [0],
@@ -601,7 +679,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Price Trends Over Time',
+                            text: `Price Trends for ${data.selected_date || 'Selected Date'} (±5 days)`,
                             font: {
                                 size: 16,
                                 weight: 'bold'
@@ -625,7 +703,7 @@
                         y: {
                             title: {
                                 display: true,
-                                text: 'Price (AUD)'
+                                text: 'Price (USD)'
                             },
                             beginAtZero: false,
                             grid: {
@@ -639,41 +717,15 @@
                     }
                 }
             });
-            
-            // Set chart container height
-            document.querySelector('.chart-container').style.height = '400px';
         }
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded, initializing...');
-            
-            // Set default countries if available
-            const originCountry = document.getElementById('origin_country');
-            const destCountry = document.getElementById('destination_country');
-            
-            if (originCountry.options.length > 1) {
-                // Set Australia as default origin if available
-                for (let i = 0; i < originCountry.options.length; i++) {
-                    if (originCountry.options[i].value === 'AU') {
-                        originCountry.selectedIndex = i;
-                        updateAirports('origin', 'AU');
-                        break;
-                    }
-                }
-            }
-            
-            if (destCountry.options.length > 1) {
-                // Set US as default destination if available
-                for (let i = 0; i < destCountry.options.length; i++) {
-                    if (destCountry.options[i].value === 'US') {
-                        destCountry.selectedIndex = i;
-                        updateAirports('destination', 'US');
-                        break;
-                    }
-                }
-            }
-        });
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
     </script>
 </body>
 </html>
